@@ -16,10 +16,10 @@ export default function LandingPage() {
       {/* Top Navbar */}
       <nav className={styles.nav}>
         <div className={styles.brand}>
-          <div className={styles.brandIcon}>
-            <Code2 size={22} />
+          <div className={styles.brandIcon} style={{ fontSize: '1.25rem' }}>
+            🍻
           </div>
-          <span>DEV<span className="text-gradient">SPLIT</span></span>
+          <span>DRINK<span className="text-gradient">SPLIT</span></span>
         </div>
         <div className={styles.navLinks}>
           <span className={styles.navBadge}>v2.0 • Next.js + PostgreSQL</span>

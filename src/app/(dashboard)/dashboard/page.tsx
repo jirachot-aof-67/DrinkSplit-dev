@@ -74,7 +74,8 @@ export default async function DashboardPage() {
       {/* Dashboard Topbar */}
       <header className={styles.header}>
         <div className={styles.brand}>
-          <span>DEV<span className="text-gradient">HUB</span></span>
+          <span style={{ fontSize: '1.4rem' }}>🍻</span>
+          <span>DRINK<span className="text-gradient">SPLIT</span></span>
           <span className={styles.badge}>DASHBOARD</span>
         </div>
 
