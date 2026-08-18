@@ -1,0 +1,5 @@
+{
+  "name": "DrinkSplit - หารค่าเหล้า",
+  "description": "A sophisticated alcohol and party expense tracking application for groups. Manage multiple venues, multiple bills per venue, and track long-term debts with AI-powered settlement advice.",
+  "requestFramePermissions": []
+}
