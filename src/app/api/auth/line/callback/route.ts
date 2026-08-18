@@ -38,7 +38,22 @@ export async function GET(request: NextRequest) {
       console.warn('Supabase not connected yet. Operating in standalone demo mode.');
     }
 
-    // 3. Create Session Token
+    // 3. Log Activity to Supabase
+    try {
+      const client = getServiceSupabase();
+      await client.from('activity_logs').insert([
+        {
+          user_id: profile.lineUserId,
+          action: 'LINE_LOGIN',
+          status: 'SUCCESS',
+          details: { displayName: profile.displayName, phoneNumber: phoneNumber || 'not_synced' },
+        },
+      ]);
+    } catch (logErr) {
+      console.warn('LINE login log write failed:', logErr);
+    }
+
+    // 4. Create Session Token
     const sessionToken = await createSessionToken({
       userId: dbUser?.id || profile.lineUserId,
       lineUserId: profile.lineUserId,

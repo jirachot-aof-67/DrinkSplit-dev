@@ -5,14 +5,25 @@
   background-color: var(--bg-primary);
 }
 
+.mobileContainer {
+  max-width: 540px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 1.25rem 1rem;
+  flex: 1;
+}
+
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.25rem 2.5rem;
+  padding: 1rem 1.25rem;
   background: var(--bg-glass);
   backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border-subtle);
+  position: sticky;
+  top: 0;
+  z-index: 20;
 }
 
 .backBtn {
@@ -43,14 +54,28 @@
   color: var(--accent-emerald);
 }
 
-.headerBadge {
-  font-size: 0.75rem;
-  font-family: monospace;
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--accent-emerald);
-  border: 1px solid var(--border-neon);
-  padding: 0.25rem 0.65rem;
-  border-radius: var(--radius-full);
+.navTabs {
+  display: flex;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.25rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.tabBtn {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+}
+
+.tabActive {
+  background: var(--gradient-emerald);
+  color: #fff;
+  font-weight: 700;
 }
 
 .mainGrid {
