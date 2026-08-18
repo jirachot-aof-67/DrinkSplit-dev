@@ -9,20 +9,38 @@ const SECRET_KEY = new TextEncoder().encode(
 );
 
 export function getAppBaseUrl(reqHeaders?: Headers): string {
+  // If explicit public app url configured
   if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
     return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
   }
 
+  // Check headers
   if (reqHeaders) {
     const host = reqHeaders.get('x-forwarded-host') || reqHeaders.get('host');
-    const proto = reqHeaders.get('x-forwarded-proto') || 'http';
+    const proto = reqHeaders.get('x-forwarded-proto') || 'https';
+    
+    // If local dev
+    if (host && (host.includes('localhost') || host.includes('127.0.0.1'))) {
+      return `http://${host}`;
+    }
+
+    // If on main vercel custom domain
+    if (host && host.includes('drink-split-dev.vercel.app')) {
+      return 'https://drink-split-dev.vercel.app';
+    }
+
+    // For any other preview deployment on vercel, fallback to official main callback domain to prevent 400 Bad Request
+    if (host && host.includes('vercel.app')) {
+      return 'https://drink-split-dev.vercel.app';
+    }
+
     if (host) {
       return `${proto}://${host}`;
     }
   }
 
   if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+    return 'https://drink-split-dev.vercel.app';
   }
 
   return 'http://localhost:3000';
