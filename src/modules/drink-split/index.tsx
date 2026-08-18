@@ -36,7 +36,7 @@ interface VenueMemberConfig {
 interface Venue {
   id: string;
   name: string;
-  totalAmount: number | '';
+  totalAmount: number | string;
   payerId: string;
   selectedMemberIds: string[];
   memberConfigs: Record<string, VenueMemberConfig>;

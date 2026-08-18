@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exchangeLineCodeForProfile, getAppBaseUrl, createSessionToken } from '@/lib/line';
-import { supabase } from '@/lib/supabase';
+import { supabase, getServiceSupabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
