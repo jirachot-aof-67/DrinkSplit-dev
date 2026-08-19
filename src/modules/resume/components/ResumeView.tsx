@@ -21,12 +21,20 @@ import {
   Sliders,
   ShieldCheck,
   Languages,
-  ExternalLink
+  ExternalLink,
+  LayoutDashboard,
+  UserCheck
 } from 'lucide-react';
 
 interface ResumeViewProps {
   initialData: ResumeData;
   isAdmin: boolean;
+  isAuthenticated?: boolean;
+  currentUser?: {
+    displayName?: string;
+    pictureUrl?: string;
+    phoneNumber?: string;
+  };
   onSwitchToDefault: () => void;
   onOpenLoginModal?: () => void;
   onDataChange?: (newData: ResumeData) => void;
@@ -144,6 +152,8 @@ function tr(text: string, isEn: boolean, customEnText?: string): string {
 export default function ResumeView({ 
   initialData, 
   isAdmin,
+  isAuthenticated,
+  currentUser,
   onSwitchToDefault,
   onOpenLoginModal,
   onDataChange
@@ -229,7 +239,7 @@ export default function ResumeView({
             <span>{lang === 'th' ? '🇹🇭 TH | EN' : '🇬🇧 EN | TH'}</span>
           </button>
 
-          {/* Admin Exclusive Controls */}
+          {/* User Controls: Admin vs Regular Logged-in User vs Guest */}
           {isAdmin ? (
             <>
               <Link 
@@ -239,6 +249,15 @@ export default function ResumeView({
               >
                 <ShieldCheck size={16} />
                 <span>{t.adminPanel}</span>
+              </Link>
+
+              <Link 
+                href="/dashboard"
+                className={styles.actionBtn}
+                style={{ borderColor: 'rgba(16, 185, 129, 0.4)', color: '#34d399' }}
+              >
+                <LayoutDashboard size={16} />
+                <span>Dashboard</span>
               </Link>
 
               <button 
@@ -264,7 +283,29 @@ export default function ResumeView({
                 onClick={handleLogout}
                 className={styles.actionBtn}
                 style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171', cursor: 'pointer' }}
-                title="ออกจากระบบ Admin"
+                title="ออกจากระบบ"
+              >
+                <LogOut size={16} />
+                <span>{t.logout}</span>
+              </button>
+            </>
+          ) : isAuthenticated ? (
+            <>
+              {/* Regular Logged-in User Controls */}
+              <Link 
+                href="/dashboard"
+                className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+                style={{ borderColor: 'rgba(16, 185, 129, 0.4)', color: '#34d399', background: 'rgba(16, 185, 129, 0.12)' }}
+              >
+                <LayoutDashboard size={16} />
+                <span>ไปที่ Dashboard ({currentUser?.displayName || 'ผู้ใช้งาน'})</span>
+              </Link>
+
+              <button 
+                onClick={handleLogout}
+                className={styles.actionBtn}
+                style={{ borderColor: 'rgba(239, 68, 68, 0.4)', color: '#f87171', cursor: 'pointer' }}
+                title="ออกจากระบบ"
               >
                 <LogOut size={16} />
                 <span>{t.logout}</span>
@@ -272,6 +313,7 @@ export default function ResumeView({
             </>
           ) : (
             <>
+              {/* Guest Not Logged In */}
               {onOpenLoginModal && (
                 <button 
                   onClick={onOpenLoginModal}

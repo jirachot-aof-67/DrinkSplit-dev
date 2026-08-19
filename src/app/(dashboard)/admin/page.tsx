@@ -15,7 +15,10 @@ import {
   Sliders, 
   RefreshCw, 
   Sparkles,
-  LayoutTemplate
+  LayoutTemplate,
+  Trash2,
+  UserCheck,
+  ShieldAlert
 } from 'lucide-react';
 import styles from '@/modules/dashboard/styles/dashboard.module.css';
 import ResumeEditorModal from '@/modules/resume/components/ResumeEditorModal';
@@ -116,6 +119,42 @@ export default function AdminPage() {
       setMsg('✅ เพิ่มเบอร์ Whitelist สำเร็จ!');
       setNewPhone('');
       setNewNote('');
+      fetchData();
+    } catch (err: any) {
+      setMsg(`❌ ${err.message}`);
+    }
+  };
+
+  const handleUpdateRole = async (type: 'profile' | 'phone', id: string, role: string) => {
+    try {
+      setMsg('');
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, id, role }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setMsg(`✅ เปลี่ยนสิทธิ์เป็น ${role.toUpperCase()} สำเร็จ!`);
+      fetchData();
+    } catch (err: any) {
+      setMsg(`❌ ${err.message}`);
+    }
+  };
+
+  const handleDeleteItem = async (type: 'profile' | 'phone', id: string, name: string) => {
+    if (!confirm(`ต้องการลบ "${name}" ออกจากระบบใช่หรือไม่?`)) return;
+
+    try {
+      setMsg('');
+      const res = await fetch(`/api/admin/users?type=${type}&id=${id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      setMsg(`🗑️ ลบ "${name}" สำเร็จ!`);
       fetchData();
     } catch (err: any) {
       setMsg(`❌ ${err.message}`);
@@ -336,15 +375,32 @@ export default function AdminPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {phones.map((ph) => (
-                  <div key={ph.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                  <div key={ph.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <div>
                       <div style={{ fontWeight: 700, fontFamily: 'monospace', color: '#00f2fe' }}>{ph.phone_number}</div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{ph.note || 'ไม่มีโน้ต'}</div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem', borderRadius: '9999px', background: ph.assigned_role === 'admin' ? 'rgba(168,85,247,0.2)' : 'rgba(255,255,255,0.05)', color: ph.assigned_role === 'admin' ? '#c084fc' : 'var(--text-secondary)' }}>
-                        {ph.assigned_role}
-                      </span>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      {/* Change Role Selector */}
+                      <select
+                        value={ph.assigned_role}
+                        onChange={(e) => handleUpdateRole('phone', ph.id, e.target.value)}
+                        style={{
+                          padding: '0.25rem 0.6rem',
+                          borderRadius: '6px',
+                          background: ph.assigned_role === 'admin' ? 'rgba(168,85,247,0.2)' : 'rgba(255,255,255,0.08)',
+                          color: ph.assigned_role === 'admin' ? '#c084fc' : '#9ca3af',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="user" style={{ background: '#11131c', color: '#fff' }}>User</option>
+                        <option value="admin" style={{ background: '#11131c', color: '#c084fc' }}>Admin 👑</option>
+                      </select>
+
                       {ph.is_linked ? (
                         <span style={{ fontSize: '0.75rem', color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                           <CheckCircle2 size={14} /> ซิงค์แล้ว
@@ -354,6 +410,24 @@ export default function AdminPage() {
                           <Clock size={14} /> รอล็อกอิน
                         </span>
                       )}
+
+                      {/* Delete Whitelist Button */}
+                      <button
+                        onClick={() => handleDeleteItem('phone', ph.id, ph.phone_number)}
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          color: '#f87171',
+                          borderRadius: '6px',
+                          padding: '0.3rem 0.4rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                        title="ลบเบอร์ออกจาก Whitelist"
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -373,21 +447,60 @@ export default function AdminPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {profiles.map((p) => (
-                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       {p.picture_url ? (
-                        <img src={p.picture_url} alt="" style={{ width: 32, height: 32, borderRadius: '50%' }} />
+                        <img src={p.picture_url} alt="" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} />
                       ) : (
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>
+                        <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#374151', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem' }}>
                           {p.display_name?.[0] || 'U'}
                         </div>
                       )}
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{p.display_name}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
-                          📱 {p.phone_number || 'ยังไม่ระบุ'} • {p.role}
+                          📱 {p.phone_number || 'ยังไม่ระบุเบอร์'}
                         </div>
                       </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      {/* Change User Role Selector */}
+                      <select
+                        value={p.role || 'user'}
+                        onChange={(e) => handleUpdateRole('profile', p.id, e.target.value)}
+                        style={{
+                          padding: '0.25rem 0.6rem',
+                          borderRadius: '6px',
+                          background: p.role === 'admin' ? 'rgba(168,85,247,0.2)' : 'rgba(255,255,255,0.08)',
+                          color: p.role === 'admin' ? '#c084fc' : '#9ca3af',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="user" style={{ background: '#11131c', color: '#fff' }}>User</option>
+                        <option value="admin" style={{ background: '#11131c', color: '#c084fc' }}>Admin 👑</option>
+                      </select>
+
+                      {/* Delete User Profile Button */}
+                      <button
+                        onClick={() => handleDeleteItem('profile', p.id, p.display_name || p.phone_number || 'ผู้ใช้นี้')}
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          color: '#f87171',
+                          borderRadius: '6px',
+                          padding: '0.3rem 0.4rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                        title="ลบผู้ใช้นี้ออกจากระบบ"
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </div>
                   </div>
                 ))}

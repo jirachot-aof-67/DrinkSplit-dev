@@ -60,3 +60,73 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+// PATCH: Update User or Whitelist Phone Role
+export async function PATCH(request: NextRequest) {
+  try {
+    const client = getServiceSupabase();
+    const { type, id, role } = await request.json();
+
+    if (!id || !role || !['user', 'admin'].includes(role)) {
+      return NextResponse.json({ error: 'ข้อมูลไม่ถูกต้อง' }, { status: 400 });
+    }
+
+    if (type === 'profile') {
+      const { error } = await client
+        .from('profiles')
+        .update({ role })
+        .eq('id', id);
+
+      if (error) throw error;
+    } else if (type === 'phone') {
+      const { error } = await client
+        .from('authorized_phones')
+        .update({ assigned_role: role })
+        .eq('id', id);
+
+      if (error) throw error;
+    } else {
+      return NextResponse.json({ error: 'Type ไม่ถูกต้อง' }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, message: `อัปเดตสิทธิ์เป็น ${role} เรียบร้อย!` });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// DELETE: Delete profile or whitelist phone
+export async function DELETE(request: NextRequest) {
+  try {
+    const client = getServiceSupabase();
+    const { searchParams } = new URL(request.url);
+    const type = searchParams.get('type');
+    const id = searchParams.get('id');
+
+    if (!id || !type) {
+      return NextResponse.json({ error: 'ระบุ ID และ Type ที่ต้องการลบ' }, { status: 400 });
+    }
+
+    if (type === 'profile') {
+      const { error } = await client
+        .from('profiles')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    } else if (type === 'phone') {
+      const { error } = await client
+        .from('authorized_phones')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    } else {
+      return NextResponse.json({ error: 'Type ไม่ถูกต้อง' }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, message: 'ลบรายการสำเร็จ' });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

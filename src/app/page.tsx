@@ -24,6 +24,8 @@ export default function LandingPage() {
   const [mode, setMode] = useState<'default' | 'resume'>('resume');
   const [resumeData, setResumeData] = useState<ResumeData>(defaultResumeData);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
@@ -56,7 +58,9 @@ export default function LandingPage() {
 
         if (meRes.ok) {
           const meData = await meRes.json();
+          setIsAuthenticated(meData.authenticated || false);
           setIsAdmin(meData.isAdmin || false);
+          setCurrentUser(meData.user || null);
         }
       } catch (err) {
         console.error('Failed to load init landing config:', err);
@@ -118,6 +122,8 @@ export default function LandingPage() {
         <ResumeView 
           initialData={resumeData}
           isAdmin={isAdmin}
+          isAuthenticated={isAuthenticated}
+          currentUser={currentUser}
           onSwitchToDefault={() => handleSwitchMode('default')}
           onOpenLoginModal={openModal}
           onDataChange={(newData) => setResumeData(newData)}
