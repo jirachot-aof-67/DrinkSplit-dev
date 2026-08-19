@@ -95,7 +95,7 @@ export default function ResumeEditorModal({
     }
   };
 
-  // Perform Final Crop on Canvas (Matching 260px preview exactly)
+  // Perform Final Crop on Canvas (Ultra-lightweight 320x320 avatar ~25KB)
   const applyCrop = () => {
     if (!croppingImage) return;
 
@@ -103,7 +103,7 @@ export default function ResumeEditorModal({
     img.src = croppingImage;
     img.onload = () => {
       const previewSize = 260; // preview container width/height
-      const targetSize = 500; // output canvas resolution
+      const targetSize = 320; // optimal lightweight avatar resolution
       const canvas = document.createElement('canvas');
       canvas.width = targetSize;
       canvas.height = targetSize;
@@ -139,29 +139,20 @@ export default function ResumeEditorModal({
         baseW = previewSize * aspect;
       }
 
-      // 3. Scale factor from preview (260px) to output canvas (targetSize 500px)
+      // 3. Scale factor from preview (260px) to output canvas (320px)
       const ratio = targetSize / previewSize;
 
-      // Base top-left inside preview before drag/zoom
-      const baseLeft = (previewSize - baseW) / 2;
-      const baseTop = (previewSize - baseH) / 2;
-
-      // Center of preview
       const cx = previewSize / 2;
       const cy = previewSize / 2;
 
       ctx.save();
       ctx.scale(ratio, ratio);
-
-      // Translate to center + drag offset
       ctx.translate(cx + cropOffset.x, cy + cropOffset.y);
       ctx.scale(cropZoom, cropZoom);
-
-      // Draw image centered
       ctx.drawImage(img, -baseW / 2, -baseH / 2, baseW, baseH);
       ctx.restore();
 
-      const croppedBase64 = canvas.toDataURL('image/jpeg', 0.9);
+      const croppedBase64 = canvas.toDataURL('image/jpeg', 0.85);
       setFormData((prev) => ({ ...prev, avatarUrl: croppedBase64 }));
       setCroppingImage(null);
     };
@@ -172,7 +163,7 @@ export default function ResumeEditorModal({
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImage(file, 800, 800, 0.8);
+      const compressed = await compressImage(file, 600, 600, 0.75);
       const updated = [...formData.experiences];
       const currentImgs = updated[expIdx].images || [];
       updated[expIdx].images = [...currentImgs, compressed];
