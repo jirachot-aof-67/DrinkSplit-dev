@@ -1,6 +1,10 @@
 .container {
   min-height: 100vh;
-  background-color: #0d0f17;
+  background-color: #090a0f;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 40px 40px;
   color: #f3f4f6;
   position: relative;
   overflow-x: hidden;
@@ -276,6 +280,24 @@
   display: flex;
   align-items: flex-start;
   gap: 1rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.contactItem:hover {
+  background: rgba(0, 242, 254, 0.08);
+  transform: translateX(4px);
+}
+
+.contactItem:hover .contactIcon {
+  background: rgba(0, 242, 254, 0.25);
+  box-shadow: 0 0 12px rgba(0, 242, 254, 0.4);
+}
+
+.contactItem:hover .contactInfo span {
+  color: #00f2fe;
 }
 
 .contactIcon {
@@ -557,22 +579,64 @@
 }
 
 @media (max-width: 900px) {
+  .nav {
+    padding: 0.8rem 1rem;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+  .brand {
+    font-size: 1.05rem;
+    gap: 0.5rem;
+  }
+  .brandBadge {
+    display: none;
+  }
+  .navActions {
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+  .actionBtn {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    gap: 0.35rem;
+  }
+  .resumeWrapper {
+    margin: 1rem auto;
+    padding: 0 0.75rem 3rem 0.75rem;
+  }
   .heroCard {
     grid-template-columns: 1fr;
     text-align: center;
-    gap: 2rem;
-    padding: 2rem;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    border-radius: 18px;
   }
   .avatarWrapper {
+    width: 160px;
+    height: 160px;
     margin: 0 auto;
+  }
+  .name {
+    font-size: 2rem;
+  }
+  .roleTitle {
+    font-size: 1.1rem;
   }
   .nameBadge {
     margin: 0 auto;
   }
   .mainGrid {
     grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+  .card {
+    padding: 1.25rem;
+    border-radius: 16px;
   }
   .grid2 {
     grid-template-columns: 1fr;
+  }
+  .modalContent {
+    padding: 1.25rem;
   }
 }

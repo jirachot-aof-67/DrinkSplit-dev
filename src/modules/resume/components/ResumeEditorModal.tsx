@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ResumeData } from '../types/resume';
 import styles from '../styles/resume.module.css';
-import { X, Save, Plus, Trash2, Upload, Image as ImageIcon, Briefcase, User, Mail, Sparkles, FolderPlus } from 'lucide-react';
+import { X, Save, Plus, Trash2, Upload, Image as ImageIcon, Crop, Check, RotateCcw, ZoomIn, ZoomOut, FolderPlus } from 'lucide-react';
 
 interface ResumeEditorModalProps {
   data: ResumeData;
@@ -23,24 +23,138 @@ export default function ResumeEditorModal({
   const [activeTab, setActiveTab] = useState<'info' | 'contact' | 'skills' | 'experiences'>('info');
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  // Simple Cropper Modal States
+  const [croppingImage, setCroppingImage] = useState<string | null>(null);
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [bgChoice, setBgChoice] = useState<'gradient-dark' | 'gradient-cyber' | 'solid-dark' | 'transparent'>('gradient-cyber');
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    setFormData(data);
+  }, [data]);
+
   if (!isOpen) return null;
 
-  // File Upload to Base64
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Check file size (limit to 3MB)
-      if (file.size > 3 * 1024 * 1024) {
-        alert('ขนาดไฟล์ใหญ่เกินไป กรุณาเลือกภาพไม่เกิน 3MB');
-        return;
-      }
+  // Compress & Resize helper (prevent huge 5MB base64 breaking Supabase payload)
+  const compressImage = (file: File, maxWidth: number = 800, maxHeight: number = 800, quality: number = 0.85): Promise<string> => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          callback(reader.result);
-        }
-      };
       reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          } else {
+            resolve(event.target?.result as string);
+          }
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
+  // Handle Image File Selection for Avatar
+  const handleAvatarFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const compressed = await compressImage(file, 1000, 1000, 0.9);
+      setCroppingImage(compressed);
+      setCropZoom(1);
+      setCropOffset({ x: 0, y: 0 });
+    } catch (err) {
+      console.error(err);
+      alert('ไม่สามารถอ่านไฟล์ภาพได้');
+    }
+  };
+
+  // Perform Final Crop on Canvas
+  const applyCrop = () => {
+    if (!croppingImage) return;
+
+    const img = new Image();
+    img.src = croppingImage;
+    img.onload = () => {
+      const size = 400; // standard 400x400 avatar
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Draw background if transparent PNG
+      if (bgChoice === 'gradient-cyber') {
+        const grad = ctx.createLinearGradient(0, 0, size, size);
+        grad.addColorStop(0, '#11131c');
+        grad.addColorStop(0.5, '#1e1b4b');
+        grad.addColorStop(1, '#0f172a');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, size, size);
+      } else if (bgChoice === 'gradient-dark') {
+        const grad = ctx.createLinearGradient(0, 0, 0, size);
+        grad.addColorStop(0, '#1f2937');
+        grad.addColorStop(1, '#111827');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, size, size);
+      } else if (bgChoice === 'solid-dark') {
+        ctx.fillStyle = '#0d0f17';
+        ctx.fillRect(0, 0, size, size);
+      }
+
+      // Calculate scaled dimensions & centering
+      const scale = cropZoom * (size / Math.min(img.width, img.height));
+      const drawWidth = img.width * scale;
+      const drawHeight = img.height * scale;
+      const drawX = (size - drawWidth) / 2 + cropOffset.x;
+      const drawY = (size - drawHeight) / 2 + cropOffset.y;
+
+      ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+
+      const croppedBase64 = canvas.toDataURL('image/jpeg', 0.88);
+      setFormData({ ...formData, avatarUrl: croppedBase64 });
+      setCroppingImage(null);
+    };
+  };
+
+  // Handle attached images for experiences
+  const handleExpImageFile = async (e: React.ChangeEvent<HTMLInputElement>, expIdx: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file, 800, 800, 0.8);
+      const updated = [...formData.experiences];
+      const currentImgs = updated[expIdx].images || [];
+      updated[expIdx].images = [...currentImgs, compressed];
+      setFormData({ ...formData, experiences: updated });
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -85,7 +199,6 @@ export default function ResumeEditorModal({
     setFormData({ ...formData, expertise: formData.expertise.filter((_, i) => i !== index) });
   };
 
-  // Add / Remove Work Experience
   const handleAddExperience = () => {
     const newExp = {
       role: 'New Role / ตำแหน่งใหม่',
@@ -109,13 +222,6 @@ export default function ResumeEditorModal({
     }
   };
 
-  const handleAddExpImage = (expIndex: number, base64: string) => {
-    const updated = [...formData.experiences];
-    const currentImgs = updated[expIndex].images || [];
-    updated[expIndex].images = [...currentImgs, base64];
-    setFormData({ ...formData, experiences: updated });
-  };
-
   const handleRemoveExpImage = (expIndex: number, imgIndex: number) => {
     const updated = [...formData.experiences];
     const currentImgs = updated[expIndex].images || [];
@@ -129,7 +235,7 @@ export default function ResumeEditorModal({
         <div className={styles.modalHeader}>
           <div>
             <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff' }}>⚙️ จัดการข้อมูล Profile / Resume</h2>
-            <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>แก้ไขรูปภาพ ข้อมูลแนะนำตัว ทักษะ และประวัติงาน</p>
+            <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>แก้ไขรูปภาพ คลอปภาพ ข้อมูลแนะนำตัว ทักษะ และประวัติงาน</p>
           </div>
           <button onClick={onClose} style={{ color: '#9ca3af', padding: '0.5rem', background: 'transparent', border: 'none', cursor: 'pointer' }}>
             <X size={22} />
@@ -166,14 +272,14 @@ export default function ResumeEditorModal({
         <form onSubmit={handleSubmit}>
           {activeTab === 'info' && (
             <div>
-              {/* Photo Upload & Preview */}
+              {/* Photo Upload & Preview & Crop */}
               <div className={styles.inputGroup} style={{ background: 'rgba(255,255,255,0.02)', padding: '1.2rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <label style={{ fontSize: '0.9rem', color: '#00f2fe', fontWeight: 700, marginBottom: '0.8rem' }}>
                   รูปภาพโปรไฟล์ (Profile Avatar)
                 </label>
                 
                 <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div style={{ position: 'relative', width: 90, height: 90, borderRadius: '50%', overflow: 'hidden', border: '3px solid #00f2fe', flexShrink: 0 }}>
+                  <div style={{ position: 'relative', width: 100, height: 100, borderRadius: '50%', overflow: 'hidden', border: '3px solid #00f2fe', background: '#11131c', flexShrink: 0, boxShadow: '0 0 15px rgba(0,242,254,0.3)' }}>
                     <img 
                       src={formData.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=800'} 
                       alt="avatar" 
@@ -182,13 +288,13 @@ export default function ResumeEditorModal({
                   </div>
 
                   <div style={{ flex: 1, minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <input 
                         type="file" 
                         ref={avatarInputRef}
                         accept="image/*" 
                         style={{ display: 'none' }} 
-                        onChange={(e) => handleFileChange(e, (base64) => setFormData({ ...formData, avatarUrl: base64 }))}
+                        onChange={handleAvatarFileSelected}
                       />
                       <button
                         type="button"
@@ -207,8 +313,8 @@ export default function ResumeEditorModal({
                           cursor: 'pointer'
                         }}
                       >
-                        <Upload size={16} />
-                        <span>เลือกรูปจากเครื่อง (Browse)</span>
+                        <Crop size={16} />
+                        <span>เลือกรูป & คลอปภาพ (Crop Tool)</span>
                       </button>
                     </div>
 
@@ -313,8 +419,26 @@ export default function ResumeEditorModal({
                       contact: { ...formData.contact, address: e.target.value }
                     })}
                     className={styles.inputField}
+                    placeholder="เช่น 118 ม.6 ต.มะขุนหวาน อ.สันป่าตอง จ.เชียงใหม่"
                   />
                 </div>
+              </div>
+
+              <div className={styles.inputGroup} style={{ marginTop: '0.8rem' }}>
+                <label>📌 ลิงก์พิกัด Google Maps (คัดลอกจาก Google Maps วางได้เลย)</label>
+                <input
+                  type="text"
+                  value={formData.contact.mapUrl || ''}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    contact: { ...formData.contact, mapUrl: e.target.value }
+                  })}
+                  className={styles.inputField}
+                  placeholder="https://maps.app.goo.gl/... หรือ https://goo.gl/maps/..."
+                />
+                <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem', display: 'block' }}>
+                  💡 เข้า Google Maps &gt; ปักหมุดบ้านตัวเอง &gt; กดแชร์ &gt; คัดลอกลิงก์มาวางที่นี่ได้เลย เพื่อให้คลิกแล้วตรงหมุดเป๊ะ 100%
+                </span>
               </div>
             </div>
           )}
@@ -504,7 +628,7 @@ export default function ResumeEditorModal({
                           type="file" 
                           accept="image/*" 
                           style={{ display: 'none' }} 
-                          onChange={(e) => handleFileChange(e, (base64) => handleAddExpImage(eIdx, base64))}
+                          onChange={(e) => handleExpImageFile(e, eIdx)}
                         />
                       </label>
                     </div>
@@ -553,6 +677,212 @@ export default function ResumeEditorModal({
           </div>
         </form>
       </div>
+
+      {/* 🌟 Interactive Image Cropper & Background Editor Modal */}
+      {croppingImage && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.92)',
+          backdropFilter: 'blur(12px)',
+          zIndex: 1500,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1.5rem',
+        }}>
+          <div style={{
+            background: '#11131c',
+            border: '1px solid rgba(0, 242, 254, 0.4)',
+            borderRadius: '20px',
+            maxWidth: '520px',
+            width: '100%',
+            padding: '1.8rem',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.9)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.2rem' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: '#00f2fe', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Crop size={20} />
+                ปรับแต่ง & คลอปรูปโปรไฟล์
+              </h3>
+              <button onClick={() => setCroppingImage(null)} style={{ background: 'transparent', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Circular Crop Preview Area (Drag & Zoom) */}
+            <div 
+              onMouseDown={(e) => {
+                setIsDragging(true);
+                setDragStart({ x: e.clientX - cropOffset.x, y: e.clientY - cropOffset.y });
+              }}
+              onMouseMove={(e) => {
+                if (isDragging) {
+                  setCropOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+                }
+              }}
+              onMouseUp={() => setIsDragging(false)}
+              onMouseLeave={() => setIsDragging(false)}
+              onTouchStart={(e) => {
+                setIsDragging(true);
+                setDragStart({ x: e.touches[0].clientX - cropOffset.x, y: e.touches[0].clientY - cropOffset.y });
+              }}
+              onTouchMove={(e) => {
+                if (isDragging) {
+                  setCropOffset({ x: e.touches[0].clientX - dragStart.x, y: e.touches[0].clientY - dragStart.y });
+                }
+              }}
+              onTouchEnd={() => setIsDragging(false)}
+              style={{
+                width: '260px',
+                height: '260px',
+                borderRadius: '50%',
+                margin: '0 auto 1.5rem',
+                position: 'relative',
+                overflow: 'hidden',
+                border: '4px solid #00f2fe',
+                boxShadow: '0 0 30px rgba(0, 242, 254, 0.4)',
+                cursor: isDragging ? 'grabbing' : 'grab',
+                background: bgChoice === 'gradient-cyber' ? 'linear-gradient(135deg, #11131c, #1e1b4b, #0f172a)' : bgChoice === 'gradient-dark' ? 'linear-gradient(180deg, #1f2937, #111827)' : '#0d0f17',
+              }}
+            >
+              <img
+                src={croppingImage}
+                alt="cropper"
+                draggable={false}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  transform: `translate(${cropOffset.x}px, ${cropOffset.y}px) scale(${cropZoom})`,
+                  transformOrigin: 'center center',
+                  pointerEvents: 'none',
+                  userSelect: 'none',
+                }}
+              />
+            </div>
+
+            <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#9ca3af', marginBottom: '1.2rem' }}>
+              💡 คลิกค้างแล้วลากเพื่อขยับตำแหน่งภาพ | ปรับซูมด้านล่าง
+            </p>
+
+            {/* Zoom Slider */}
+            <div style={{ marginBottom: '1.2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#d1d5db', marginBottom: '0.4rem' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}><ZoomOut size={14} /> ซูมภาพ</span>
+                <span>{(cropZoom * 100).toFixed(0)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="3"
+                step="0.05"
+                value={cropZoom}
+                onChange={(e) => setCropZoom(parseFloat(e.target.value))}
+                style={{ width: '100%', accentColor: '#00f2fe' }}
+              />
+            </div>
+
+            {/* Background Color Selector for Transparent PNG */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ fontSize: '0.85rem', color: '#d1d5db', display: 'block', marginBottom: '0.5rem' }}>
+                🎨 สีพื้นหลังสำหรับรูปไดคัท (PNG ใส):
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setBgChoice('gradient-cyber')}
+                  style={{
+                    padding: '0.4rem',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    background: bgChoice === 'gradient-cyber' ? 'rgba(0,242,254,0.2)' : 'rgba(255,255,255,0.05)',
+                    border: bgChoice === 'gradient-cyber' ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🌌 Cyber Dark
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBgChoice('gradient-dark')}
+                  style={{
+                    padding: '0.4rem',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    background: bgChoice === 'gradient-dark' ? 'rgba(0,242,254,0.2)' : 'rgba(255,255,255,0.05)',
+                    border: bgChoice === 'gradient-dark' ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🌑 Dark Grey
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBgChoice('solid-dark')}
+                  style={{
+                    padding: '0.4rem',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    background: bgChoice === 'solid-dark' ? 'rgba(0,242,254,0.2)' : 'rgba(255,255,255,0.05)',
+                    border: bgChoice === 'solid-dark' ? '1px solid #00f2fe' : '1px solid rgba(255,255,255,0.1)',
+                    color: '#fff',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ⚫ Black Pitch
+                </button>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setCropZoom(1);
+                  setCropOffset({ x: 0, y: 0 });
+                }}
+                style={{
+                  padding: '0.6rem 1rem',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#9ca3af',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem'
+                }}
+              >
+                <RotateCcw size={14} /> รีเซ็ต
+              </button>
+              <button
+                type="button"
+                onClick={applyCrop}
+                style={{
+                  padding: '0.6rem 1.4rem',
+                  background: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',
+                  border: 'none',
+                  color: '#000',
+                  fontWeight: 700,
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem'
+                }}
+              >
+                <Check size={16} /> ตกลงใช้รูปนี้
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

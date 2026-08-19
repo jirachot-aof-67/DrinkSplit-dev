@@ -1,27 +1,38 @@
 export interface ResumeData {
   name: string;
   title: string;
+  titleEn?: string;
   bio: string;
+  bioEn?: string;
   avatarUrl: string;
   contact: {
     phone: string;
     email: string;
     address: string;
+    addressEn?: string;
     lineId: string;
+    mapUrl?: string;
   };
   expertise: string[];
   skills: string[];
   experiences: {
     role: string;
+    roleEn?: string;
     period: string;
+    periodEn?: string;
     company: string;
+    companyEn?: string;
     description: string[];
+    descriptionEn?: string[];
     images?: string[];
   }[];
   education: {
     institution: string;
+    institutionEn?: string;
     period: string;
+    periodEn?: string;
     degree: string;
+    degreeEn?: string;
   }[];
 }
 
