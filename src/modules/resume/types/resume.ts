@@ -45,7 +45,7 @@ export const defaultResumeData: ResumeData = {
   name: 'JIRACHOT YAAAUN',
   title: 'Software Developer / IT Support Infra',
   bio: 'นักพัฒนาซอฟต์แวร์และผู้ดูแลระบบโครงสร้างพื้นฐานไอที มุ่งเน้นการสร้างสรรค์โซลูชันระบบอัตโนมัติ การบริหารจัดการฐานข้อมูล และพัฒนาระบบ Intranet/Web Applications เพื่อเพิ่มประสิทธิภาพองค์กร',
-  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=800',
+  avatarUrl: '/images/profile.jpg',
   contact: {
     phone: '098-4577638',
     email: 'jirachotaof@gmail.com',

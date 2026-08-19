@@ -306,7 +306,7 @@ export default function ResumeEditorModal({
                 <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <div style={{ position: 'relative', width: 100, height: 100, borderRadius: '50%', overflow: 'hidden', border: '3px solid #00f2fe', background: '#11131c', flexShrink: 0, boxShadow: '0 0 15px rgba(0,242,254,0.3)' }}>
                     <img 
-                      src={formData.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=800'} 
+                      src={formData.avatarUrl || '/images/profile.jpg'} 
                       alt="avatar" 
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                     />
