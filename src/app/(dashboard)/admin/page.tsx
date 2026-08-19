@@ -9,12 +9,17 @@ import {
   Plus, 
   LogOut, 
   Search, 
-  ArrowLeft,
-  Database,
-  CheckCircle2,
-  Clock
+  ArrowLeft, 
+  CheckCircle2, 
+  Clock, 
+  Sliders, 
+  RefreshCw, 
+  Sparkles,
+  LayoutTemplate
 } from 'lucide-react';
 import styles from '@/modules/dashboard/styles/dashboard.module.css';
+import ResumeEditorModal from '@/modules/resume/components/ResumeEditorModal';
+import { defaultResumeData, ResumeData } from '@/modules/resume/types/resume';
 
 export default function AdminPage() {
   const [profiles, setProfiles] = useState<any[]>([]);
@@ -25,13 +30,29 @@ export default function AdminPage() {
   const [newRole, setNewRole] = useState('user');
   const [msg, setMsg] = useState('');
 
+  // Landing config states
+  const [landingMode, setLandingMode] = useState<'default' | 'resume'>('resume');
+  const [resumeData, setResumeData] = useState<ResumeData>(defaultResumeData);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [modeSaving, setModeSaving] = useState(false);
+
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/users');
-      const data = await res.json();
-      setProfiles(data.profiles || []);
-      setPhones(data.phones || []);
+      const [userRes, configRes] = await Promise.all([
+        fetch('/api/admin/users'),
+        fetch('/api/admin/landing-config'),
+      ]);
+
+      const userData = await userRes.json();
+      setProfiles(userData.profiles || []);
+      setPhones(userData.phones || []);
+
+      if (configRes.ok) {
+        const configData = await configRes.json();
+        if (configData.mode) setLandingMode(configData.mode);
+        if (configData.resumeData) setResumeData(configData.resumeData);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -42,6 +63,37 @@ export default function AdminPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const handleToggleLandingMode = async (newMode: 'default' | 'resume') => {
+    setModeSaving(true);
+    setLandingMode(newMode);
+    try {
+      await fetch('/api/admin/landing-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: newMode }),
+      });
+      setMsg(`✅ สลับโหมดหน้าแรกเป็น: ${newMode === 'resume' ? 'Portfolio / Resume' : 'DrinkSplit ปกติ'} เรียบร้อย!`);
+    } catch (err: any) {
+      setMsg(`❌ ไม่สามารถเปลี่ยนโหมดได้: ${err.message}`);
+    } finally {
+      setModeSaving(false);
+    }
+  };
+
+  const handleSaveResumeData = async (newData: ResumeData) => {
+    setResumeData(newData);
+    try {
+      await fetch('/api/admin/landing-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resumeData: newData }),
+      });
+      setMsg('✅ บันทึกข้อมูลเรซูเม่เรียบร้อย!');
+    } catch (err: any) {
+      setMsg(`❌ บันทึกข้อมูลไม่สำเร็จ: ${err.message}`);
+    }
+  };
 
   const handleAddPhone = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,9 +136,20 @@ export default function AdminPage() {
           <Link href="/dashboard" className={styles.logoutBtn} title="ไปหน้า Dashboard ทั่วไป">
             <ArrowLeft size={18} />
           </Link>
-          <Link href="/" className={styles.logoutBtn} title="ออกจากระบบ">
-            <LogOut size={18} />
+          <Link href="/" className={styles.logoutBtn} title="ไปยังหน้าแรก">
+            <LayoutTemplate size={18} />
           </Link>
+          <button 
+            onClick={async () => {
+              await fetch('/api/auth/logout', { method: 'POST' });
+              window.location.href = '/';
+            }} 
+            className={styles.logoutBtn} 
+            title="ออกจากระบบ (Logout)"
+            style={{ color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+          >
+            <LogOut size={18} />
+          </button>
         </div>
       </header>
 
@@ -94,22 +157,128 @@ export default function AdminPage() {
         {/* Welcome */}
         <div className={styles.welcomeBanner} style={{ borderLeft: '4px solid #a855f7' }}>
           <div>
-            <h1>ระบบจัดการผู้ใช้ & เบอร์โทร (Whitelist)</h1>
-            <p>เพิ่มเบอร์โทรศัพท์เพื่อให้ระบบ Auto-Sync สิทธิ์และข้อมูลอัตโนมัติเมื่อผู้ใช้ Login ด้วย LINE</p>
+            <h1>ระบบจัดการผู้ดูแลระบบ (Admin Console)</h1>
+            <p>สลับโหมดหน้าแรก, ปรับแต่งเรซูเม่โปรไฟล์ และจัดการ Whitelist เบอร์โทรศัพท์</p>
           </div>
           <button onClick={fetchData} className={styles.statusBox} style={{ background: 'rgba(168, 85, 247, 0.1)', color: '#c084fc', borderColor: 'rgba(168, 85, 247, 0.3)' }}>
             🔄 รีเฟรชข้อมูล
           </button>
         </div>
 
-        {/* Add Whitelist Form */}
+        {/* Status Message */}
+        {msg && (
+          <div style={{ padding: '0.85rem 1.2rem', marginBottom: '1.5rem', borderRadius: 'var(--radius-sm)', background: msg.startsWith('✅') ? 'rgba(16, 185, 129, 0.15)' : 'rgba(244, 63, 94, 0.15)', border: msg.startsWith('✅') ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(244, 63, 94, 0.3)', color: msg.startsWith('✅') ? '#34d399' : '#f87171', fontWeight: 600 }}>
+            {msg}
+          </div>
+        )}
+
+        {/* 🌟 1. Landing Page Mode Controller */}
+        <div style={{ background: 'linear-gradient(135deg, rgba(25, 28, 40, 0.8) 0%, rgba(17, 19, 28, 0.95) 100%)', border: '1px solid rgba(0, 242, 254, 0.3)', borderRadius: 'var(--radius-md)', padding: '1.8rem', marginBottom: '2rem', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.4rem' }}>
+                <LayoutTemplate size={24} color="#00f2fe" />
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#fff' }}>ระบบสลับหน้าแรก (Landing Mode Switcher)</h3>
+                <span style={{ padding: '0.2rem 0.6rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 700, background: landingMode === 'resume' ? 'rgba(0, 242, 254, 0.2)' : 'rgba(168, 85, 247, 0.2)', color: landingMode === 'resume' ? '#00f2fe' : '#c084fc', border: '1px solid currentColor' }}>
+                  {landingMode === 'resume' ? '✨ โหมด PORTFOLIO / RESUME' : '🍻 โหมด DRINKSPLIT ปกติ'}
+                </span>
+              </div>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                เลือกหน้าที่ต้องการให้ทุกคนเห็นเมื่อเข้าเว็บ (<code>/</code>) — คนทั่วไปจะเห็นโหมดที่คุณเลือกโดยอัตโนมัติ
+              </p>
+            </div>
+
+            {/* Switch Actions */}
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button
+                onClick={() => handleToggleLandingMode('resume')}
+                disabled={modeSaving || landingMode === 'resume'}
+                style={{
+                  padding: '0.75rem 1.4rem',
+                  borderRadius: 'var(--radius-sm)',
+                  background: landingMode === 'resume' ? 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)' : 'rgba(255,255,255,0.05)',
+                  color: landingMode === 'resume' ? '#000' : '#d1d5db',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  border: landingMode === 'resume' ? 'none' : '1px solid var(--border-subtle)',
+                  cursor: landingMode === 'resume' ? 'default' : 'pointer',
+                }}
+              >
+                <Sparkles size={16} />
+                <span>โหมด Resume โปรไฟล์</span>
+              </button>
+
+              <button
+                onClick={() => handleToggleLandingMode('default')}
+                disabled={modeSaving || landingMode === 'default'}
+                style={{
+                  padding: '0.75rem 1.4rem',
+                  borderRadius: 'var(--radius-sm)',
+                  background: landingMode === 'default' ? 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)' : 'rgba(255,255,255,0.05)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  border: landingMode === 'default' ? 'none' : '1px solid var(--border-subtle)',
+                  cursor: landingMode === 'default' ? 'default' : 'pointer',
+                }}
+              >
+                <span>🍻 โหมด DrinkSplit ปกติ</span>
+              </button>
+
+              <button
+                onClick={() => setIsEditorOpen(true)}
+                style={{
+                  padding: '0.75rem 1.2rem',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(0, 242, 254, 0.1)',
+                  border: '1px solid rgba(0, 242, 254, 0.4)',
+                  color: '#00f2fe',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  cursor: 'pointer',
+                }}
+              >
+                <Sliders size={16} />
+                <span>แก้ไขข้อมูลเรซูเม่ / รูปภาพ</span>
+              </button>
+
+              <Link
+                href="/"
+                target="_blank"
+                style={{
+                  padding: '0.75rem 1.2rem',
+                  borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid var(--border-subtle)',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                }}
+              >
+                👁️ เปิดดูหน้าแรก
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* 🌟 2. Add Whitelist Form */}
         <div style={{ background: 'var(--bg-glass-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '1.5rem', marginBottom: '2rem' }}>
           <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Smartphone size={20} color="#00f2fe" />
             เพิ่มเบอร์โทรล่วงหน้า (Pre-Authorized Whitelist)
           </h3>
-
-          {msg && <p style={{ marginBottom: '1rem', fontSize: '0.9rem', color: msg.startsWith('✅') ? '#34d399' : '#f87171' }}>{msg}</p>}
 
           <form onSubmit={handleAddPhone} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr)) auto', gap: '1rem', alignItems: 'end' }}>
             <div>
@@ -227,6 +396,14 @@ export default function AdminPage() {
           </div>
         </div>
       </main>
+
+      {/* Resume Editor Modal for Admin */}
+      <ResumeEditorModal
+        data={resumeData}
+        isOpen={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+        onSave={handleSaveResumeData}
+      />
     </div>
   );
 }

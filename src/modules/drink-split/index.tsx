@@ -429,10 +429,15 @@ export default function DrinkSplitModule() {
     <div className={styles.container}>
       {/* Top Header */}
       <header className={styles.header}>
-        <Link href="/dashboard" className={styles.backBtn}>
-          <ArrowLeft size={20} />
-          <span>Dashboard</span>
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <Link href="/" className={styles.backBtn} title="ไปยังหน้าแรก">
+            <span>🏠 หน้าแรก</span>
+          </Link>
+          <Link href="/dashboard" className={styles.backBtn}>
+            <ArrowLeft size={18} />
+            <span>Dashboard</span>
+          </Link>
+        </div>
         <div className={styles.navTabs}>
           <button 
             onClick={() => setActiveTab('split')} 

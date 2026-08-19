@@ -10,7 +10,9 @@ import {
   PlusCircle, 
   Sparkles, 
   CreditCard,
-  UserCheck
+  UserCheck,
+  Home,
+  ShieldCheck
 } from 'lucide-react';
 
 export default async function DashboardPage() {
@@ -89,7 +91,10 @@ export default async function DashboardPage() {
             <span className={styles.userName}>{user.displayName}</span>
             <span className={styles.userPhone}>📱 {user.phoneNumber}</span>
           </div>
-          <Link href="/" className={styles.logoutBtn} title="ออกจากระบบ">
+          <Link href="/" className={styles.logoutBtn} title="ไปยังหน้าแรก (Home)">
+            <Home size={18} />
+          </Link>
+          <Link href="/api/auth/logout" className={styles.logoutBtn} title="ออกจากระบบ">
             <LogOut size={18} />
           </Link>
         </div>
