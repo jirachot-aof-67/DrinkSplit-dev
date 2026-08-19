@@ -45,7 +45,13 @@ export default function LandingPage() {
         if (configRes.ok) {
           const data = await configRes.json();
           if (data.mode) setMode(data.mode);
-          if (data.resumeData) setResumeData(data.resumeData);
+          // Always keep latest static code schema while allowing custom edits
+          setResumeData({
+            ...defaultResumeData,
+            ...(data.resumeData || {}),
+            skills: defaultResumeData.skills,
+            expertise: defaultResumeData.expertise,
+          });
         }
 
         if (meRes.ok) {
