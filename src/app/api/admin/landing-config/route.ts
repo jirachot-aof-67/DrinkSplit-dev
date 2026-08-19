@@ -31,6 +31,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
     const client = getServiceSupabase();
 
     // 1. Fetch current
@@ -78,7 +79,11 @@ export async function POST(request: NextRequest) {
       console.error('Failed to save to Supabase site_settings:', dbErr);
     }
 
-    return NextResponse.json({ success: true, config: current });
+    return NextResponse.json({ 
+      success: true, 
+      config: current,
+      env: isProduction ? 'production' : 'development'
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

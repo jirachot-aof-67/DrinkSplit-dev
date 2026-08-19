@@ -95,50 +95,74 @@ export default function ResumeEditorModal({
     }
   };
 
-  // Perform Final Crop on Canvas
+  // Perform Final Crop on Canvas (Matching 260px preview exactly)
   const applyCrop = () => {
     if (!croppingImage) return;
 
     const img = new Image();
     img.src = croppingImage;
     img.onload = () => {
-      const size = 400; // standard 400x400 avatar
+      const previewSize = 260; // preview container width/height
+      const targetSize = 500; // output canvas resolution
       const canvas = document.createElement('canvas');
-      canvas.width = size;
-      canvas.height = size;
+      canvas.width = targetSize;
+      canvas.height = targetSize;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Draw background if transparent PNG
+      // 1. Draw background
       if (bgChoice === 'gradient-cyber') {
-        const grad = ctx.createLinearGradient(0, 0, size, size);
+        const grad = ctx.createLinearGradient(0, 0, targetSize, targetSize);
         grad.addColorStop(0, '#11131c');
         grad.addColorStop(0.5, '#1e1b4b');
         grad.addColorStop(1, '#0f172a');
         ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, size, size);
+        ctx.fillRect(0, 0, targetSize, targetSize);
       } else if (bgChoice === 'gradient-dark') {
-        const grad = ctx.createLinearGradient(0, 0, 0, size);
+        const grad = ctx.createLinearGradient(0, 0, 0, targetSize);
         grad.addColorStop(0, '#1f2937');
         grad.addColorStop(1, '#111827');
         ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, size, size);
+        ctx.fillRect(0, 0, targetSize, targetSize);
       } else if (bgChoice === 'solid-dark') {
         ctx.fillStyle = '#0d0f17';
-        ctx.fillRect(0, 0, size, size);
+        ctx.fillRect(0, 0, targetSize, targetSize);
       }
 
-      // Calculate scaled dimensions & centering
-      const scale = cropZoom * (size / Math.min(img.width, img.height));
-      const drawWidth = img.width * scale;
-      const drawHeight = img.height * scale;
-      const drawX = (size - drawWidth) / 2 + cropOffset.x;
-      const drawY = (size - drawHeight) / 2 + cropOffset.y;
+      // 2. Compute object-fit: contain dimensions inside previewSize (260px)
+      const aspect = img.width / img.height;
+      let baseW = previewSize;
+      let baseH = previewSize;
+      if (aspect > 1) {
+        baseH = previewSize / aspect;
+      } else {
+        baseW = previewSize * aspect;
+      }
 
-      ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+      // 3. Scale factor from preview (260px) to output canvas (targetSize 500px)
+      const ratio = targetSize / previewSize;
 
-      const croppedBase64 = canvas.toDataURL('image/jpeg', 0.88);
-      setFormData({ ...formData, avatarUrl: croppedBase64 });
+      // Base top-left inside preview before drag/zoom
+      const baseLeft = (previewSize - baseW) / 2;
+      const baseTop = (previewSize - baseH) / 2;
+
+      // Center of preview
+      const cx = previewSize / 2;
+      const cy = previewSize / 2;
+
+      ctx.save();
+      ctx.scale(ratio, ratio);
+
+      // Translate to center + drag offset
+      ctx.translate(cx + cropOffset.x, cy + cropOffset.y);
+      ctx.scale(cropZoom, cropZoom);
+
+      // Draw image centered
+      ctx.drawImage(img, -baseW / 2, -baseH / 2, baseW, baseH);
+      ctx.restore();
+
+      const croppedBase64 = canvas.toDataURL('image/jpeg', 0.9);
+      setFormData((prev) => ({ ...prev, avatarUrl: croppedBase64 }));
       setCroppingImage(null);
     };
   };
@@ -164,8 +188,9 @@ export default function ResumeEditorModal({
     try {
       await onSave(formData);
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert(`❌ เกิดข้อผิดพลาดในการบันทึก: ${err.message || err}`);
     } finally {
       setSaving(false);
     }

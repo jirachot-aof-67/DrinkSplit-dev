@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ResumeData } from '../types/resume';
@@ -29,6 +29,7 @@ interface ResumeViewProps {
   isAdmin: boolean;
   onSwitchToDefault: () => void;
   onOpenLoginModal?: () => void;
+  onDataChange?: (newData: ResumeData) => void;
 }
 
 // Translations mapping
@@ -144,7 +145,8 @@ export default function ResumeView({
   initialData, 
   isAdmin,
   onSwitchToDefault,
-  onOpenLoginModal 
+  onOpenLoginModal,
+  onDataChange
 }: ResumeViewProps) {
   const [data, setData] = useState<ResumeData>(initialData);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
@@ -152,6 +154,11 @@ export default function ResumeView({
   const [lang, setLang] = useState<'th' | 'en'>('th');
   const isEn = lang === 'en';
   const t = translations[lang];
+
+  // Sync state whenever initialData changes from parent
+  useEffect(() => {
+    setData(initialData);
+  }, [initialData]);
 
   const handleLogout = async () => {
     try {
@@ -164,14 +171,20 @@ export default function ResumeView({
 
   const handleSaveData = async (newData: ResumeData) => {
     setData(newData);
+    if (onDataChange) onDataChange(newData);
     try {
-      await fetch('/api/admin/landing-config', {
+      const res = await fetch('/api/admin/landing-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ resumeData: newData }),
       });
-    } catch (e) {
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.error || 'Failed to save');
+      }
+    } catch (e: any) {
       console.error(e);
+      alert(`❌ บันทึกล้มเหลว: ${e.message}`);
     }
   };
 

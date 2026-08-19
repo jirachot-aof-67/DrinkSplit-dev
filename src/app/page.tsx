@@ -114,6 +114,7 @@ export default function LandingPage() {
           isAdmin={isAdmin}
           onSwitchToDefault={() => handleSwitchMode('default')}
           onOpenLoginModal={openModal}
+          onDataChange={(newData) => setResumeData(newData)}
         />
 
         {/* Global Login Modal reused */}
